@@ -1,0 +1,4 @@
+# Ignore all .json files
+*.json
+
+# Other ignore rules can go here

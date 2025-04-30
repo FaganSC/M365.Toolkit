@@ -1,0 +1,46 @@
+name: Publish Development PowerShell Module
+
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up PowerShell
+      uses: Amadevus/pwsh-script@v2
+
+    - name: Install dependencies
+      shell: pwsh
+      run: .\Install-Dependencies.ps1
+    - name: Run Pester tests
+      shell: pwsh
+      run: Invoke-Pester -Path .\src\tests\M365.Toolkit.Tests.ps1
+    - name: Publish PowerShell Module
+      shell: pwsh
+      env:
+        PSGALLERYAPIKEY: ${{ secrets.PSGALLERYAPIKEY }}
+      run: |
+        $moduleManifest = Get-Item -Path .\M365.Toolkit.psd1
+        $secureApiKey = ConvertTo-SecureString -String $env:PSGALLERYAPIKEY -AsPlainText -Force
+        Write-Host $env:PSGALLERYAPIKEY
+        Write-Host $secureApiKey
+        Publish-Module -Path (Split-Path -Path $moduleManifest.FullName -Parent) -NuGetApiKey "$($env:PSGALLERYAPIKEY)" -Confirm:$false -Force
+    - name: Create GitHub Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.RELEASETOKEN }}
+      with:
+        tag_name: v${{ github.run_number }}
+        release_name: Release v${{ github.run_number }}
+        body: |
+          This release includes the latest updates to the M365.Toolbox module.
+        draft: false
+        prerelease: true
