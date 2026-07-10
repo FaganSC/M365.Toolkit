@@ -1,0 +1,62 @@
+name: Bump Module Version
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        description: Version part to increment when explicit_version is empty
+        required: true
+        default: build
+        type: choice
+        options:
+          - build
+          - patch
+          - minor
+          - major
+      explicit_version:
+        description: Optional explicit version (example: 1.0.1.0)
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  bump-version:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Bump manifest version
+        id: bump
+        shell: pwsh
+        run: |
+          $explicitVersion = '${{ inputs.explicit_version }}'.Trim()
+          if ([string]::IsNullOrWhiteSpace($explicitVersion)) {
+            $newVersion = ./scripts/Update-ModuleVersion.ps1 -ManifestPath ./M365.Toolkit.psd1 -Bump '${{ inputs.bump_type }}'
+          }
+          else {
+            $newVersion = ./scripts/Update-ModuleVersion.ps1 -ManifestPath ./M365.Toolkit.psd1 -Version $explicitVersion
+          }
+
+          "new_version=$newVersion" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Commit and push version update
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add M365.Toolkit.psd1
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          git commit -m "chore: bump module version to v${{ steps.bump.outputs.new_version }}"
+          git push

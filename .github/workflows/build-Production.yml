@@ -76,4 +76,15 @@ jobs:
             throw 'Secret PSGALLERYAPIKEY is missing. Add it in repository secrets.'
           }
 
+          $manifestPath = './M365.Toolkit.psd1'
+          $manifest = Import-PowerShellDataFile -Path $manifestPath
+          $moduleName = (Split-Path -Path $manifestPath -LeafBase)
+          $moduleVersion = [version]$manifest.ModuleVersion
+
+          $galleryModule = Find-Module -Name $moduleName -Repository PSGallery -ErrorAction SilentlyContinue
+          if ($null -ne $galleryModule -and [version]$galleryModule.Version -ge $moduleVersion) {
+            Write-Host "Skipping publish. $moduleName version $($galleryModule.Version) already exists in PSGallery."
+            exit 0
+          }
+
           Publish-Module -Path . -NuGetApiKey $env:PSGALLERY_API_KEY -Force -ErrorAction Stop
