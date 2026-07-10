@@ -3,10 +3,10 @@ name: Development Build, Release, and Publish Module
 on:
   push:
     branches:
-      - main
+      - develop
   pull_request:
     branches:
-      - main
+      - develop
   workflow_dispatch:
 
 permissions:
