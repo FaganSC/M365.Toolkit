@@ -1,4 +1,4 @@
-name: ProductionBuild, Release, and Publish Module
+name: Production Build, Release, and Publish Module
 
 on:
   push:
