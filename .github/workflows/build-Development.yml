@@ -1,45 +1,78 @@
-name: Publish Development PowerShell Module
+name: Build, Release, and Publish Module
 
 on:
   push:
     branches:
-      - develop
+      - main
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
-  build:
+  build-test-release-publish:
     runs-on: windows-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Set up PowerShell
-      uses: Amadevus/pwsh-script@v2
-      with:
-        script: |
-          Write-Host "PowerShell setup complete"
-    
-    - uses: actions/checkout@v2
-    - name: Get Version from tag
-      id: vars
-      run: |
-        echo "tag=${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
-    - name: Check Version
-      env:
-        RELEASE_VERSION: ${{ steps.vars.outputs.tag }}
-      shell: pwsh
-      run: |
-        write-host "Release check"
-        write-host "Release version env: $RELEASE_VERSION"
-        write-host "Release version step: ${{ steps.vars.outputs.tag }}"
-        if ($RELEASE_VERSION -eq "") {
-          write-host "No version found in tag"
-          exit 1
-        }
-    - name: Install dependencies
-      shell: pwsh
-      run: .\Install-Dependencies.ps1
-    - name: Run Pester tests
-      shell: pwsh
-      run: Invoke-Pester -Path .\src\tests\M365.Toolkit.Tests.ps1
+      - name: Read module version from manifest
+        id: version
+        shell: pwsh
+        run: |
+          $manifest = Import-PowerShellDataFile -Path ./M365.Toolkit.psd1
+          $moduleVersion = [string]$manifest.ModuleVersion
+          if ([string]::IsNullOrWhiteSpace($moduleVersion)) {
+            throw 'ModuleVersion was not found in M365.Toolkit.psd1.'
+          }
+
+          $releaseTag = "v$moduleVersion"
+
+          "module_version=$moduleVersion" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "release_tag=$releaseTag" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Install test dependencies
+        shell: pwsh
+        run: |
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+          Install-Module -Name Pester -MinimumVersion 5.0.0 -Force -Scope CurrentUser
+          Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
+
+      - name: Validate module manifest
+        shell: pwsh
+        run: |
+          Test-ModuleManifest -Path ./M365.Toolkit.psd1 | Out-Null
+
+      - name: Run Pester tests
+        shell: pwsh
+        run: |
+          Invoke-Pester -Path ./src/tests/M365.Toolkit.Tests.ps1 -CI
+
+      - name: Create or update GitHub release
+        if: github.event_name != 'pull_request'
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ steps.version.outputs.release_tag }}
+          name: Release ${{ steps.version.outputs.release_tag }}
+          body: |
+            Automated release for M365.Toolkit version ${{ steps.version.outputs.module_version }}.
+          allowUpdates: true
+          draft: false
+          prerelease: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish module to PowerShell Gallery
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        env:
+          PSGALLERY_API_KEY: ${{ secrets.PSGALLERYAPIKEY }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:PSGALLERY_API_KEY)) {
+            throw 'Secret PSGALLERYAPIKEY is missing. Add it in repository secrets.'
+          }
+
+          Publish-Module -Path . -NuGetApiKey $env:PSGALLERY_API_KEY -Force -ErrorAction Stop
