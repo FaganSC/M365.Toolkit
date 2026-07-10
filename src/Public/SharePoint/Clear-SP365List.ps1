@@ -16,7 +16,7 @@ function Clear-SP365List {
             }
         }
 
-        #Test-ForModuleUpdate
+        Test-ForModuleUpdate
 
         $deletedCounter = 0
         $itemTotal = (Get-PnPList -Identity $listName).ItemCount

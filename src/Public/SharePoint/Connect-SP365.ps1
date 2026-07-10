@@ -17,7 +17,7 @@ function Connect-SP365 {
             
         }
     }
-    #Test-ForModuleUpdate
+    Test-ForModuleUpdate
 
     $onedriveAppsPath = "$($env:OneDrive)\Apps\M365.Toolkit"
     $settingsFilePath = "$($onedriveAppsPath)\tenants.json"

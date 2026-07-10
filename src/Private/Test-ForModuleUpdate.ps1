@@ -3,11 +3,11 @@ function Test-ForModuleUpdate {
     param()
     $ModuleName = "M365.Toolkit"
 
-    $checkedVersion = Get-Variable -Name M365ToolkitCheckedVersion -ValueOnly -Scope Global -ErrorAction SilentlyContinue
+    $checkedVersion = False
 
     if ($checkedVersion -ne "Yes") {
-        [version]$currentVersion = (Get-Module -ListAvailable | Where-Object { $_.Name -eq $ModuleName } | Select-Object Version).Version.ToString()
-        [version]$latestVersion = (Invoke-WebRequest "https://api.github.com/repos/FaganSC/$($ModuleName)/releases" | ConvertFrom-Json)[0].tag_name
+        $currentVersion = ((Get-Module -ListAvailable | Where-Object { $_.Name -eq $ModuleName })[0] | Select-Object Version).Version.ToString()
+        $latestVersion = ((Invoke-WebRequest "https://api.github.com/repos/FaganSC/$($ModuleName)/releases" | ConvertFrom-Json)[0].tag_name -replace '^v', '')
 
         if ($currentVersion -gt $latestVersion) {
             Write-Verbose "You are using an pre-release: $($currentVersion.ToString())"
