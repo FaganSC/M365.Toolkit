@@ -5,13 +5,13 @@
 @{
 
     # Script module or binary module file associated with this manifest.
-    #RootModule        = ''
+    RootModule        = 'M365.Toolkit.psm1'
 
     # Version number of this module.
-    ModuleVersion     = '1.0.0.0'
+    ModuleVersion     = '1.0.0.4'
 
     # Supported PSEditions
-    # CompatiblePSEditions = @()
+    CompatiblePSEditions = @('Desktop')
 
     # ID used to uniquely identify this module
     GUID              = '34818f54-8e33-4e01-8db0-905b02cf7b76'
@@ -23,13 +23,13 @@
     CompanyName       = 'Unknown'
 
     # Copyright statement for this module
-    Copyright         = '(c) 2025 Shawn Fagan. All rights reserved.'
+    Copyright         = '(c) 2026 Shawn Fagan. All rights reserved.'
 
     # Description of the functionality provided by this module
     Description       = 'Common tasks used when administrating Microsoft 365. This PowerShell module has been put together to help save time on some of the common tasks preformed. Over time, this Toolkit will have more functions added to it to help Administrators with some of the common actions.'
 
     # Minimum version of the PowerShell engine required by this module
-    # PowerShellVersion = ''
+    PowerShellVersion = '5.1'
 
     # Name of the PowerShell host required by this module
     # PowerShellHostName = ''
@@ -66,10 +66,7 @@
     # NestedModules = @()
 
     # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-    FunctionsToExport = @(
-        'Connect-SP365',
-        'Clear-SP365List'
-    )
+    FunctionsToExport = @('Clear-SP365List','Connect-SP365','Copy-SP365Nav','Move-SP365Nav')
 
     # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
     CmdletsToExport   = '*'
@@ -120,6 +117,18 @@
     # DefaultCommandPrefix = ''
 
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

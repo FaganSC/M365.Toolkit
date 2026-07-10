@@ -1,0 +1,86 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build: Clean",
+            "type": "shell",
+            "windows": {
+                "command": "${workspaceFolder}\\build.ps1"
+            },
+            "args": [
+                "Clean"
+            ],
+            "group": "build"
+        },
+        {
+            "label": "Build: Compile",
+            "type": "shell",
+            "windows": {
+                "command": "${workspaceFolder}\\build.ps1"
+            },
+            "args": [
+                "Compile"
+            ],
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Build: Build",
+            "type": "shell",
+            "windows": {
+                "command": "${workspaceFolder}\\build.ps1"
+            },
+            "args": [
+                "Build"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Build: Test",
+            "type": "shell",
+            "windows": {
+                "command": "${workspaceFolder}\\build.ps1"
+            },
+            "args": [
+                "Test"
+            ],
+            "group": "test",
+            "problemMatcher": []
+        },
+        {
+            "label": "Tests: Units",
+            "type": "shell",
+            "windows": {
+                "command": "Invoke-Pester -Script ${workspaceFolder}\\tests -PesterOption @{IncludeVSCodeMarker=$true} -Tag Unit",
+                "options": {
+                    "cwd": "${workspaceFolder}\\src"
+                }
+            },
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$pester"
+            ]
+        },
+        {
+            "label": "Publish",
+            "type": "shell",
+            "windows": {
+                "command": "${workspaceFolder}\\build.ps1"
+            },
+            "args": [
+                "Publish"
+            ],
+            "group": "build",
+            "problemMatcher": []
+        }
+    ]
+}
