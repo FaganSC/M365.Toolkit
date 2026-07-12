@@ -31,6 +31,12 @@ jobs:
         with:
           ref: ${{ github.ref }}
 
+      - name: Install module dependencies
+        shell: pwsh
+        run: |
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+          Install-Module -Name PnP.PowerShell -RequiredVersion 2.12.0 -Force -Scope CurrentUser -AllowClobber
+
       - name: Bump manifest version
         id: bump
         shell: pwsh
