@@ -27,4 +27,4 @@ Convert a PFX to Base64 in PowerShell:
 
 The production workflow signs with SHA-256, adds a trusted timestamp for CA-issued certificates, validates every signature, and removes the temporary certificate before publishing to PowerShell Gallery.
 
-A self-signed certificate is trusted temporarily by the build runner so its signatures can be validated and is signed without an external timestamp. It is not automatically trusted on consumer systems; use a publicly trusted code-signing certificate for production distribution.
+A self-signed certificate is signed without an external timestamp. The workflow validates the embedded signer and rejects missing, mismatched, or hash-invalid signatures, but it cannot establish certificate trust. Use a publicly trusted code-signing certificate for production distribution.

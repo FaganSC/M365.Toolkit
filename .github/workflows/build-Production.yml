@@ -72,9 +72,8 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($env:CODESIGNINGPFXPASSWORD)) {
             throw 'Secret CODESIGNINGPFXPASSWORD is missing.'
           }
-
           $pfxCertificates = [Security.Cryptography.X509Certificates.X509Certificate2Collection]::new()
-          $temporaryTrustStores = @()
+          $pfxCertificates = [Security.Cryptography.X509Certificates.X509Certificate2Collection]::new()
           $certificate = $null
           $pfxBytes = $null
 
@@ -124,22 +123,7 @@ jobs:
 
             $isSelfSigned = $certificate.Subject -eq $certificate.Issuer
             if ($isSelfSigned) {
-              foreach ($storeName in 'Root', 'TrustedPublisher') {
-                Write-Host "[$(Get-Date -Format o)] Temporarily adding the certificate to $storeName."
-                $store = [Security.Cryptography.X509Certificates.X509Store]::new(
-                  $storeName,
-                  [Security.Cryptography.X509Certificates.StoreLocation]::CurrentUser
-                )
-                try {
-                  $store.Open([Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
-                  $store.Add($certificate)
-                  $temporaryTrustStores += $storeName
-                }
-                finally {
-                  $store.Close()
-                }
-              }
-              Write-Warning 'Using a self-signed certificate. Consumers must trust this certificate separately.'
+              Write-Warning 'Using a self-signed certificate. Signature trust cannot be established on the runner.'
             }
 
             $now = Get-Date
@@ -168,15 +152,46 @@ jobs:
               $signature = Set-AuthenticodeSignature @signingParameters
               Write-Host "[$(Get-Date -Format o)] Signature status: $($signature.Status)"
 
-              if ($signature.Status -ne [System.Management.Automation.SignatureStatus]::Valid) {
+              $acceptableStatus = if ($isSelfSigned) {
+                $signature.Status -in @(
+                  [System.Management.Automation.SignatureStatus]::Valid,
+                  [System.Management.Automation.SignatureStatus]::UnknownError
+                )
+              }
+              else {
+                $signature.Status -eq [System.Management.Automation.SignatureStatus]::Valid
+              }
+
+              if (
+                -not $acceptableStatus -or
+                $null -eq $signature.SignerCertificate -or
+                $signature.SignerCertificate.Thumbprint -ne $certificate.Thumbprint
+              ) {
                 throw "Failed to sign '$($file.FullName)': $($signature.StatusMessage)"
               }
             }
 
             $invalidSignatures = @(
-              $moduleFiles |
-                Get-AuthenticodeSignature |
-                Where-Object Status -ne ([System.Management.Automation.SignatureStatus]::Valid)
+              foreach ($file in $moduleFiles) {
+                $signature = Get-AuthenticodeSignature -FilePath $file.FullName
+                $acceptableStatus = if ($isSelfSigned) {
+                  $signature.Status -in @(
+                    [System.Management.Automation.SignatureStatus]::Valid,
+                    [System.Management.Automation.SignatureStatus]::UnknownError
+                  )
+                }
+                else {
+                  $signature.Status -eq [System.Management.Automation.SignatureStatus]::Valid
+                }
+
+                if (
+                  -not $acceptableStatus -or
+                  $null -eq $signature.SignerCertificate -or
+                  $signature.SignerCertificate.Thumbprint -ne $certificate.Thumbprint
+                ) {
+                  $signature
+                }
+              }
             )
             if ($invalidSignatures.Count -gt 0) {
               $invalidFiles = $invalidSignatures.Path -join ', '
@@ -186,21 +201,6 @@ jobs:
             Write-Host "Signed and validated $($moduleFiles.Count) module files."
           }
           finally {
-            if ($null -ne $certificate) {
-              foreach ($storeName in $temporaryTrustStores) {
-                $store = [Security.Cryptography.X509Certificates.X509Store]::new(
-                  $storeName,
-                  [Security.Cryptography.X509Certificates.StoreLocation]::CurrentUser
-                )
-                try {
-                  $store.Open([Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
-                  $store.Remove($certificate)
-                }
-                finally {
-                  $store.Close()
-                }
-              }
-            }
             foreach ($pfxCertificate in $pfxCertificates) {
               $pfxCertificate.Dispose()
             }
