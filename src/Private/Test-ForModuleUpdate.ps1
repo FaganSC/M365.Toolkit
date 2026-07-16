@@ -5,7 +5,7 @@ function Test-ForModuleUpdate {
     $checkedVersion = (Get-Variable -Name M365ToolkitCheckedVersion -Scope Global -ErrorAction SilentlyContinue).Value
     Write-Verbose "Checked Version: $checkedVersion"
     if ($checkedVersion -ne "Yes") {
-        $currentVersion = ((Get-Module -ListAvailable | Where-Object { $_.Name -eq $ModuleName })[0] | Select-Object Version).Version.ToString()
+        $currentVersion = ((Get-Module | Where-Object { $_.Name -eq $ModuleName })[0] | Select-Object Version).Version.ToString()
         Write-Verbose "Current Version: $currentVersion"
         # PowerShell TestGallery API endpoint for the module
         $Url = "https://www.powershellgallery.com/api/v2/FindPackagesById()?id='$ModuleName'"

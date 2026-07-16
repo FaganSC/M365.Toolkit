@@ -1,15 +1,18 @@
-$publicFunctionFiles = @()
-$publicSearchPaths = @(
-    (Join-Path -Path $PSScriptRoot -ChildPath 'src/Public/*.ps1'),
-    (Join-Path -Path $PSScriptRoot -ChildPath 'Public/*.ps1')
-)
+#Requires -Version 5.1
 
-foreach ($path in $publicSearchPaths) {
-    $publicFunctionFiles += Get-ChildItem -Recurse -Path $path -ErrorAction SilentlyContinue
+# Dot-source all Private and Public function scripts
+$SourceRoot = Join-Path $PSScriptRoot 'src'
+$Private = @(Get-ChildItem -Path (Join-Path $SourceRoot 'Private') -Filter '*.ps1' -Recurse -ErrorAction Stop)
+$Public  = @(Get-ChildItem -Path (Join-Path $SourceRoot 'Public')  -Filter '*.ps1' -Recurse -ErrorAction Stop)
+
+foreach ($file in @($Private + $Public)) {
+    try {
+        . $file.FullName
+    }
+    catch {
+        Write-Error -Message "Failed to import function $($file.FullName): $_"
+    }
 }
 
-$publicFunctionFiles | Sort-Object -Property FullName -Unique | ForEach-Object {
-    . $_.FullName
-}
-
-Export-ModuleMember -Function '*-*'
+# Only the functions in Public\ are exported to consumers of the module.
+Export-ModuleMember -Function $Public.BaseName
