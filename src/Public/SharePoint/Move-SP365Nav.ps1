@@ -1,4 +1,66 @@
 function Move-SP365Nav {
+    <#
+    .SYNOPSIS
+        Moves SharePoint navigation nodes between navigation locations or sites.
+
+    .DESCRIPTION
+        Reads the navigation hierarchy from a source location, recreates it in a
+        target location, and then clears the source navigation. Existing target
+        navigation is cleared by default.
+
+        Provide SourceSite and TargetSite for a cross-site move. Set SameSite to
+        true to move between navigation locations in the source site.
+
+    .PARAMETER SourceSite
+        The absolute URL of the SharePoint site from which navigation is read.
+
+    .PARAMETER TargetSite
+        The absolute URL of the destination SharePoint site. Provide this
+        parameter unless SameSite is true.
+
+    .PARAMETER SameSite
+        Indicates that the source and target navigation locations belong to the
+        source site. The command does not establish a separate target connection
+        when this value is true.
+
+    .PARAMETER ClearTargetNav
+        Controls whether existing target navigation nodes are removed before the
+        source nodes are added. The default value is true.
+
+    .PARAMETER SourceNavigationLocation
+        The PnP navigation location from which nodes are read, such as QuickLaunch
+        or TopNavigationBar.
+
+    .PARAMETER TargetNavigationLocation
+        The PnP navigation location to which nodes are added, such as QuickLaunch
+        or TopNavigationBar.
+
+    .EXAMPLE
+        Move-SP365Nav -SourceSite 'https://contoso.sharepoint.com/sites/source' `
+            -TargetSite 'https://contoso.sharepoint.com/sites/target' `
+            -SourceNavigationLocation QuickLaunch `
+            -TargetNavigationLocation QuickLaunch
+
+        Moves Quick Launch navigation between two SharePoint sites.
+
+    .EXAMPLE
+        Move-SP365Nav -SourceSite 'https://contoso.sharepoint.com/sites/operations' `
+            -SameSite $true `
+            -SourceNavigationLocation QuickLaunch `
+            -TargetNavigationLocation TopNavigationBar
+
+        Moves Quick Launch nodes to the top navigation in the same site.
+
+    .INPUTS
+        None.
+
+    .OUTPUTS
+        None.
+
+    .NOTES
+        This command clears the source navigation after populating the target.
+        Use Copy-SP365Nav to preserve the source navigation.
+    #>
     [CmdletBinding()]
     param (
         [parameter(Mandatory = $true)]

@@ -1,4 +1,43 @@
 function Clear-SP365List {
+    <#
+    .SYNOPSIS
+        Deletes or recycles every item in a SharePoint list.
+
+    .DESCRIPTION
+        Retrieves items from the specified SharePoint list in batches and removes
+        them until the list is empty. Items are permanently deleted by default.
+        Use Recycle to send items to the SharePoint recycle bin instead.
+
+        The command requires an active SharePoint connection and prompts for
+        confirmation before making changes. Enter an uppercase Y to continue.
+
+    .PARAMETER ListName
+        The name or identity of the SharePoint list to clear.
+
+    .PARAMETER Recycle
+        Sends removed items to the SharePoint recycle bin. Without this switch,
+        the items are permanently deleted.
+
+    .EXAMPLE
+        Clear-SP365List -ListName 'Import Queue'
+
+        Prompts for confirmation and permanently deletes every item in the list.
+
+    .EXAMPLE
+        Clear-SP365List -ListName 'Import Queue' -Recycle
+
+        Prompts for confirmation and sends every item in the list to the recycle bin.
+
+    .INPUTS
+        None.
+
+    .OUTPUTS
+        None.
+
+    .NOTES
+        This command is destructive. Confirm the current site and selected list
+        before entering Y.
+    #>
     [CmdletBinding()]
     param (
         [Parameter(Mandatory = $true)]

@@ -1,4 +1,35 @@
 function Restore-SP365ListItems {
+    <#
+    .SYNOPSIS
+        Restores a SharePoint list's items from the recycle bin.
+
+    .DESCRIPTION
+        Finds recycle-bin items whose directory matches the root folder of the
+        specified SharePoint list and restores each item.
+
+        The command requires an active SharePoint connection and prompts for
+        confirmation before restoring items. Enter an uppercase Y to continue.
+
+    .PARAMETER ListName
+        The name or identity of the SharePoint list whose recycled items should
+        be restored.
+
+    .EXAMPLE
+        Restore-SP365ListItems -ListName 'Import Queue'
+
+        Prompts for confirmation and restores matching recycle-bin items to the
+        Import Queue list.
+
+    .INPUTS
+        None.
+
+    .OUTPUTS
+        The command may emit output returned by Restore-PnPRecycleBinItem.
+
+    .NOTES
+        Only items currently available in the SharePoint recycle bin and
+        associated with the list's root folder can be restored.
+    #>
     [CmdletBinding()]
     param (
         [Parameter(Mandatory = $true)]

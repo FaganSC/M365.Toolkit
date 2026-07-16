@@ -1,4 +1,40 @@
 function Connect-SP365 {
+    <#
+    .SYNOPSIS
+        Connects to SharePoint Online using a saved tenant configuration.
+
+    .DESCRIPTION
+        Uses PnP.PowerShell interactive authentication to connect to SharePoint
+        Online. Tenant settings are stored in Apps\M365.Toolkit\tenants.json
+        under the current user's OneDrive folder.
+
+        When Url is omitted, the command displays the saved tenants and prompts
+        the user to select, add, update, or remove a connection.
+
+    .PARAMETER Url
+        The absolute URL of the SharePoint Online site. The URL must correspond
+        to a saved tenant configuration.
+
+    .EXAMPLE
+        Connect-SP365
+
+        Displays saved SharePoint tenants and prompts for the tenant to connect to.
+
+    .EXAMPLE
+        Connect-SP365 -Url 'https://contoso.sharepoint.com/sites/operations'
+
+        Connects to the site using the matching saved tenant configuration.
+
+    .INPUTS
+        None.
+
+    .OUTPUTS
+        None. The command establishes or retains the current PnP.PowerShell
+        connection.
+
+    .NOTES
+        Interactive authentication may open a browser or authentication dialog.
+    #>
     [CmdletBinding()]
     param (
         $Url = $null
