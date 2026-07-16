@@ -75,6 +75,7 @@ jobs:
 
           $pfxPath = Join-Path $env:RUNNER_TEMP 'M365.Toolkit-CodeSigning.pfx'
           $importedCertificates = @()
+          $temporaryTrustStores = @()
           $certificate = $null
 
           try {
@@ -94,12 +95,30 @@ jobs:
             $certificate = $importedCertificates |
               Where-Object {
                 $_.HasPrivateKey -and
-                $_.EnhancedKeyUsageList.ObjectId.Value -contains $codeSigningOid
+                $_.EnhancedKeyUsageList.ObjectId -contains $codeSigningOid
               } |
               Select-Object -First 1
 
             if ($null -eq $certificate) {
               throw 'The PFX does not contain a certificate with a private key that is valid for code signing.'
+            }
+
+            if ($certificate.Subject -eq $certificate.Issuer) {
+              foreach ($storeName in 'Root', 'TrustedPublisher') {
+                $store = [Security.Cryptography.X509Certificates.X509Store]::new(
+                  $storeName,
+                  [Security.Cryptography.X509Certificates.StoreLocation]::CurrentUser
+                )
+                try {
+                  $store.Open([Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
+                  $store.Add($certificate)
+                  $temporaryTrustStores += $storeName
+                }
+                finally {
+                  $store.Close()
+                }
+              }
+              Write-Warning 'Using a self-signed certificate. Consumers must trust this certificate separately.'
             }
 
             $now = Get-Date
@@ -139,6 +158,21 @@ jobs:
             Write-Host "Signed and validated $($moduleFiles.Count) module files."
           }
           finally {
+            if ($null -ne $certificate) {
+              foreach ($storeName in $temporaryTrustStores) {
+                $store = [Security.Cryptography.X509Certificates.X509Store]::new(
+                  $storeName,
+                  [Security.Cryptography.X509Certificates.StoreLocation]::CurrentUser
+                )
+                try {
+                  $store.Open([Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
+                  $store.Remove($certificate)
+                }
+                finally {
+                  $store.Close()
+                }
+              }
+            }
             foreach ($importedCertificate in $importedCertificates) {
               Remove-Item `
                 -Path "Cert:\CurrentUser\My\$($importedCertificate.Thumbprint)" `
