@@ -25,6 +25,6 @@ Convert a PFX to Base64 in PowerShell:
 [Convert]::ToBase64String([IO.File]::ReadAllBytes('M365.Toolkit-CodeSigning.pfx'))
 ```
 
-The production workflow signs with SHA-256, adds a trusted timestamp, validates every signature, and removes the temporary certificate before publishing to PowerShell Gallery.
+The production workflow signs with SHA-256, adds a trusted timestamp for CA-issued certificates, validates every signature, and removes the temporary certificate before publishing to PowerShell Gallery.
 
-A self-signed certificate is trusted temporarily by the build runner so its signatures can be validated. It is not automatically trusted on consumer systems; use a publicly trusted code-signing certificate for production distribution.
+A self-signed certificate is trusted temporarily by the build runner so its signatures can be validated and is signed without an external timestamp. It is not automatically trusted on consumer systems; use a publicly trusted code-signing certificate for production distribution.

@@ -103,7 +103,8 @@ jobs:
               throw 'The PFX does not contain a certificate with a private key that is valid for code signing.'
             }
 
-            if ($certificate.Subject -eq $certificate.Issuer) {
+            $isSelfSigned = $certificate.Subject -eq $certificate.Issuer
+            if ($isSelfSigned) {
               foreach ($storeName in 'Root', 'TrustedPublisher') {
                 $store = [Security.Cryptography.X509Certificates.X509Store]::new(
                   $storeName,
@@ -133,12 +134,18 @@ jobs:
             )
 
             foreach ($file in $moduleFiles) {
-              $signature = Set-AuthenticodeSignature `
-                -FilePath $file.FullName `
-                -Certificate $certificate `
-                -HashAlgorithm SHA256 `
-                -IncludeChain All `
-                -TimestampServer 'http://timestamp.digicert.com'
+              Write-Host "Signing $($file.FullName)"
+              $signingParameters = @{
+                FilePath      = $file.FullName
+                Certificate   = $certificate
+                HashAlgorithm = 'SHA256'
+                IncludeChain  = 'All'
+              }
+              if (-not $isSelfSigned) {
+                $signingParameters.TimestampServer = 'https://timestamp.digicert.com'
+              }
+
+              $signature = Set-AuthenticodeSignature @signingParameters
 
               if ($signature.Status -ne [System.Management.Automation.SignatureStatus]::Valid) {
                 throw "Failed to sign '$($file.FullName)': $($signature.StatusMessage)"
