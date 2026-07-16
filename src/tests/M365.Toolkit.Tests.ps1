@@ -1,7 +1,12 @@
 BeforeAll {
     $ModuleRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
     $ModuleName = 'M365.Toolkit'
-    Import-Module (Join-Path $ModuleRoot "$ModuleName.psd1") -Force
+    $ManifestPath = Join-Path $ModuleRoot "$ModuleName.psd1"
+    $PublicPath = Join-Path $ModuleRoot 'src\Public'
+    $ExpectedCommands = @(Get-ChildItem -Path $PublicPath -Filter '*.ps1' -Recurse).BaseName | Sort-Object
+    $ManifestCommands = @(Import-PowerShellDataFile -Path $ManifestPath).FunctionsToExport | Sort-Object
+
+    Import-Module $ManifestPath -Force
 }
 
 Describe 'M365.Toolkit module' {
@@ -10,19 +15,10 @@ Describe 'M365.Toolkit module' {
     }
 
     It 'exports all public commands' {
-        $expectedCommands = @(
-            'Clear-SP365List'
-            'Connect-SP365'
-            'Copy-SP365Nav'
-            'Get-M365ToolkitInfo'
-            'Move-SP365Nav'
-        )
-        $exportedCommands = @(Get-Command -Module 'M365.Toolkit' -CommandType Function).Name
+        $exportedCommands = @(Get-Command -Module 'M365.Toolkit' -CommandType Function).Name | Sort-Object
 
-        $exportedCommands | Should -HaveCount $expectedCommands.Count
-        foreach ($command in $expectedCommands) {
-            $exportedCommands | Should -Contain $command
-        }
+        Compare-Object $ExpectedCommands $ManifestCommands | Should -BeNullOrEmpty
+        Compare-Object $ExpectedCommands $exportedCommands | Should -BeNullOrEmpty
     }
 
     It 'Get-M365ToolkitInfo returns expected properties' {
