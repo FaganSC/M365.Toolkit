@@ -1,0 +1,40 @@
+title: M365.Toolkit
+description: PowerShell command reference for M365.Toolkit
+remote_theme: just-the-docs/just-the-docs@v0.12.0
+
+permalink: pretty
+
+defaults:
+  - scope:
+      path: ""
+      type: pages
+    values:
+      layout: default
+
+plugins:
+  - jekyll-remote-theme
+  - jekyll-relative-links
+
+relative_links:
+  enabled: true
+  collections: true
+
+search_enabled: true
+enable_copy_code_button: true
+heading_anchors: true
+
+aux_links:
+  "M365.Toolkit on GitHub":
+    - "https://github.com/FaganSC/M365.Toolkit"
+
+aux_links_new_tab: true
+
+back_to_top: true
+back_to_top_text: "Back to top"
+
+gh_edit_link: true
+gh_edit_link_text: "Edit this page on GitHub"
+gh_edit_repository: "https://github.com/FaganSC/M365.Toolkit"
+gh_edit_branch: "main"
+gh_edit_source: docs
+gh_edit_view_mode: "edit"
