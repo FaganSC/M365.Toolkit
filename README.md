@@ -9,3 +9,20 @@ Use the GitHub workflow `.github/workflows/version-bump.yml` to update the modul
 2. Select `bump_type` (`build`, `patch`, `minor`, or `major`) or provide `explicit_version`.
 3. The workflow updates `ModuleVersion`, commits the change, and pushes to the current branch.
 4. After merge/push to the target branch, the publish workflow uses the new manifest version for release tagging and PowerShell Gallery publish.
+
+## Production Code Signing
+
+Production releases use Authenticode signatures for the module manifest, root module, and all public and private function scripts. Configure these GitHub Actions repository secrets before running the production workflow:
+
+| Secret | Value |
+| --- | --- |
+| `CODESIGNINGPFXBASE64` | Base64-encoded PFX containing a valid code-signing certificate and private key |
+| `CODESIGNINGPFXPASSWORD` | Password for the PFX |
+
+Convert a PFX to Base64 in PowerShell:
+
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes('M365.Toolkit-CodeSigning.pfx'))
+```
+
+The production workflow signs with SHA-256, adds a trusted timestamp, validates every signature, and removes the temporary certificate before publishing to PowerShell Gallery.
