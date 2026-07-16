@@ -12,7 +12,8 @@ function Move-SP365Nav {
     ) 
     Begin {
         $isVerbose = $VerbosePreference -ne 'SilentlyContinue'
-        Write-Verbose "Starting Move-SP365Nav function"
+        Write-Verbose "Starting Copy-SP365Nav function"
+        Write-Debug "SourceSite: $SourceSite, TargetSite: $TargetSite, SameSite: $SameSite, ClearTargetNav: $ClearTargetNav, SourceNavigationLocation: $SourceNavigationLocation, TargetNavigationLocation: $TargetNavigationLocation"
         $privatePath = Join-Path -Path (Split-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -Parent) -ChildPath "private"
         Write-Verbose "Private path set to $privatePath"
         @(Get-ChildItem -Path $privatePath -Recurse -Filter "*.ps1") | ForEach-Object {
@@ -33,10 +34,12 @@ function Move-SP365Nav {
     Process {
         try {
             Connect-SP365 -Url $SourceSite
-            Write-Host -NoNewline "Retrieving navigation from source site"
+            Write-Host "Starting to retrieve navigation from source site"
             $siteNav = Get-SiteNav -NavigationNodeLocation $SourceNavigationLocation
-            Write-Host -ForegroundColor Green " .....Done!"
-
+            Write-Host "Finished retrieving navigation from source site"
+            Write-Host "Total navigation nodes retrieved: $($siteNav.Count)"
+            Write-Host ""
+            
             if (-not $SameSite) {
                 Connect-SP365 -Url $TargetSite
             }
