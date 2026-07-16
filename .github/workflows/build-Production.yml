@@ -73,26 +73,24 @@ jobs:
             throw 'Secret CODESIGNINGPFXPASSWORD is missing.'
           }
 
-          $pfxPath = Join-Path $env:RUNNER_TEMP 'M365.Toolkit-CodeSigning.pfx'
-          $importedCertificates = @()
+          $pfxCertificates = [Security.Cryptography.X509Certificates.X509Certificate2Collection]::new()
           $temporaryTrustStores = @()
           $certificate = $null
+          $pfxBytes = $null
 
           try {
-            [IO.File]::WriteAllBytes(
-              $pfxPath,
-              [Convert]::FromBase64String($env:CODESIGNINGPFXBASE64)
+            Write-Host "[$(Get-Date -Format o)] Decoding the code-signing PFX."
+            $pfxBytes = [Convert]::FromBase64String($env:CODESIGNINGPFXBASE64)
+
+            Write-Host "[$(Get-Date -Format o)] Loading the code-signing certificate in memory."
+            $pfxCertificates.Import(
+              $pfxBytes,
+              $env:CODESIGNINGPFXPASSWORD,
+              [Security.Cryptography.X509Certificates.X509KeyStorageFlags]::EphemeralKeySet
             )
 
-            $password = ConvertTo-SecureString $env:CODESIGNINGPFXPASSWORD -AsPlainText -Force
             $codeSigningOid = '1.3.6.1.5.5.7.3.3'
-            $importedCertificates = @(
-              Import-PfxCertificate `
-                -FilePath $pfxPath `
-                -CertStoreLocation Cert:\CurrentUser\My `
-                -Password $password
-            )
-            $certificate = $importedCertificates |
+            $certificate = $pfxCertificates |
               Where-Object {
                 $_.HasPrivateKey -and
                 $_.EnhancedKeyUsageList.ObjectId -contains $codeSigningOid
@@ -106,6 +104,7 @@ jobs:
             $isSelfSigned = $certificate.Subject -eq $certificate.Issuer
             if ($isSelfSigned) {
               foreach ($storeName in 'Root', 'TrustedPublisher') {
+                Write-Host "[$(Get-Date -Format o)] Temporarily adding the certificate to $storeName."
                 $store = [Security.Cryptography.X509Certificates.X509Store]::new(
                   $storeName,
                   [Security.Cryptography.X509Certificates.StoreLocation]::CurrentUser
@@ -134,7 +133,7 @@ jobs:
             )
 
             foreach ($file in $moduleFiles) {
-              Write-Host "Signing $($file.FullName)"
+              Write-Host "[$(Get-Date -Format o)] Signing $($file.FullName)"
               $signingParameters = @{
                 FilePath      = $file.FullName
                 Certificate   = $certificate
@@ -146,6 +145,7 @@ jobs:
               }
 
               $signature = Set-AuthenticodeSignature @signingParameters
+              Write-Host "[$(Get-Date -Format o)] Signature status: $($signature.Status)"
 
               if ($signature.Status -ne [System.Management.Automation.SignatureStatus]::Valid) {
                 throw "Failed to sign '$($file.FullName)': $($signature.StatusMessage)"
@@ -180,13 +180,12 @@ jobs:
                 }
               }
             }
-            foreach ($importedCertificate in $importedCertificates) {
-              Remove-Item `
-                -Path "Cert:\CurrentUser\My\$($importedCertificate.Thumbprint)" `
-                -Force `
-                -ErrorAction SilentlyContinue
+            foreach ($pfxCertificate in $pfxCertificates) {
+              $pfxCertificate.Dispose()
             }
-            Remove-Item -Path $pfxPath -Force -ErrorAction SilentlyContinue
+            if ($null -ne $pfxBytes) {
+              [Array]::Clear($pfxBytes, 0, $pfxBytes.Length)
+            }
           }
 
       - name: Create or update GitHub release
