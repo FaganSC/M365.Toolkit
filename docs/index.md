@@ -16,6 +16,8 @@ Import-Module -Name M365.Toolkit
 
 The module requires PowerShell 7.4 or later and PnP.PowerShell 3.1.0 or later.
 
+[View M365.Toolkit on PowerShell Gallery](https://www.powershellgallery.com/packages/M365.Toolkit/){: .btn .btn-primary }
+
 ## Command reference
 
 | Command | Description |

@@ -24,6 +24,8 @@ enable_copy_code_button: true
 heading_anchors: true
 
 aux_links:
+  "Install from PowerShell Gallery":
+    - "https://www.powershellgallery.com/packages/M365.Toolkit/"
   "M365.Toolkit on GitHub":
     - "https://github.com/FaganSC/M365.Toolkit"
 
