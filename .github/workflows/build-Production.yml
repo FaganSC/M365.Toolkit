@@ -90,12 +90,33 @@ jobs:
             )
 
             $codeSigningOid = '1.3.6.1.5.5.7.3.3'
-            $certificate = $pfxCertificates |
-              Where-Object {
-                $_.HasPrivateKey -and
-                $_.EnhancedKeyUsageList.ObjectId -contains $codeSigningOid
-              } |
-              Select-Object -First 1
+            $codeSigningCertificates = @(
+              foreach ($candidate in $pfxCertificates) {
+                $ekuExtension = $candidate.Extensions |
+                  Where-Object {
+                    $_ -is [Security.Cryptography.X509Certificates.X509EnhancedKeyUsageExtension]
+                  } |
+                  Select-Object -First 1
+                $ekuOids = @(
+                  if ($null -ne $ekuExtension) {
+                    $ekuExtension.EnhancedKeyUsages | ForEach-Object Value
+                  }
+                )
+
+                Write-Host (
+                  "Loaded certificate: Subject='{0}', Thumbprint='{1}', HasPrivateKey={2}, EKUs='{3}'" -f
+                  $candidate.Subject,
+                  $candidate.Thumbprint,
+                  $candidate.HasPrivateKey,
+                  ($ekuOids -join ',')
+                )
+
+                if ($candidate.HasPrivateKey -and $ekuOids -contains $codeSigningOid) {
+                  $candidate
+                }
+              }
+            )
+            $certificate = $codeSigningCertificates | Select-Object -First 1
 
             if ($null -eq $certificate) {
               throw 'The PFX does not contain a certificate with a private key that is valid for code signing.'
