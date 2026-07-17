@@ -28,3 +28,9 @@ Convert a PFX to Base64 in PowerShell:
 The production workflow signs with SHA-256, adds a trusted timestamp for CA-issued certificates, validates every signature, and removes the temporary certificate before publishing to PowerShell Gallery.
 
 A self-signed certificate is signed without an external timestamp. The workflow validates the embedded signer and rejects missing, mismatched, or hash-invalid signatures, but it cannot establish certificate trust. Use a publicly trusted code-signing certificate for production distribution.
+
+## Automated Versioning
+
+Each non-bot push to `develop` increments the three-part module build version, applies the `preview` prerelease label, and publishes the signed package to PowerShell Gallery. The workflow commits the new version to `develop` without triggering another build.
+
+When a pull request is opened against `main`, the workflow increments the patch version and removes the prerelease label. Add a label such as `v1.2.3.4` to set that exact version instead. Adding a non-version label does not change the manifest.

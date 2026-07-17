@@ -10,6 +10,11 @@
     Version component to increment: Major, Minor, Patch, or Build.
 .PARAMETER Version
     Explicit version to assign instead of incrementing the current version.
+.PARAMETER Prerelease
+    Prerelease label to apply. PowerShell Gallery requires a three-part module
+    version when this value is used.
+.PARAMETER ClearPrerelease
+    Removes an existing prerelease label from the manifest.
 .EXAMPLE
     .\Update-ModuleVersion.ps1 -ManifestPath .\M365.Toolkit.psd1 -Bump Patch
 .EXAMPLE
@@ -29,7 +34,14 @@ param(
         $parsedVersion = $null
         [version]::TryParse($_, [ref]$parsedVersion)
     })]
-    [string]$Version
+    [string]$Version,
+
+    [Parameter()]
+    [ValidatePattern('^[0-9A-Za-z-]+$')]
+    [string]$Prerelease,
+
+    [Parameter()]
+    [switch]$ClearPrerelease
 )
 
 if (-not (Test-Path -Path $ManifestPath)) {
@@ -50,11 +62,35 @@ else {
         'Major' { [version]::new($currentVersion.Major + 1, 0, 0, 0) }
         'Minor' { [version]::new($currentVersion.Major, $currentVersion.Minor + 1, 0, 0) }
         'Patch' { [version]::new($currentVersion.Major, $currentVersion.Minor, $build + 1, 0) }
-        'Build' { [version]::new($currentVersion.Major, $currentVersion.Minor, $build, $revision + 1) }
+        'Build' {
+            if ($Prerelease) {
+                [version]::new($currentVersion.Major, $currentVersion.Minor, $build + 1)
+            }
+            else {
+                [version]::new($currentVersion.Major, $currentVersion.Minor, $build, $revision + 1)
+            }
+        }
     }
 }
 
-Update-ModuleManifest -Path $ManifestPath -ModuleVersion $newVersion.ToString()
+$updateParameters = @{
+    Path          = $ManifestPath
+    ModuleVersion = $newVersion.ToString()
+}
+if ($Prerelease) {
+    if ($newVersion.Revision -ge 0) {
+        throw 'A prerelease module version must contain exactly three numeric parts.'
+    }
+    $updateParameters.Prerelease = $Prerelease
+}
+
+Update-ModuleManifest @updateParameters
+
+if ($ClearPrerelease) {
+    $manifestContent = Get-Content -Path $ManifestPath -Raw
+    $manifestContent = $manifestContent -replace "(?m)^(\s*)Prerelease\s*=\s*'[^']*'\s*$", '$1# Prerelease = '''''
+    Set-Content -Path $ManifestPath -Value $manifestContent -Encoding utf8NoBOM -NoNewline
+}
 
 Write-Host "Bumped module version: $currentVersion -> $newVersion"
 

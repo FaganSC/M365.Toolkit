@@ -35,6 +35,9 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($moduleVersion)) {
             throw 'ModuleVersion was not found in M365.Toolkit.psd1.'
           }
+          if (-not [string]::IsNullOrWhiteSpace([string]$manifest.PrivateData.PSData.Prerelease)) {
+            throw 'Production releases cannot contain a prerelease label.'
+          }
 
           $releaseTag = "v$moduleVersion"
 
@@ -72,142 +75,11 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($env:CODESIGNINGPFXPASSWORD)) {
             throw 'Secret CODESIGNINGPFXPASSWORD is missing.'
           }
-          $pfxCertificates = [Security.Cryptography.X509Certificates.X509Certificate2Collection]::new()
-          $pfxCertificates = [Security.Cryptography.X509Certificates.X509Certificate2Collection]::new()
-          $certificate = $null
-          $pfxBytes = $null
 
-          try {
-            Write-Host "[$(Get-Date -Format o)] Decoding the code-signing PFX."
-            $pfxBytes = [Convert]::FromBase64String($env:CODESIGNINGPFXBASE64)
-
-            Write-Host "[$(Get-Date -Format o)] Loading the code-signing certificate in memory."
-            $pfxCertificates.Import(
-              $pfxBytes,
-              $env:CODESIGNINGPFXPASSWORD,
-              [Security.Cryptography.X509Certificates.X509KeyStorageFlags]::EphemeralKeySet
-            )
-
-            $codeSigningOid = '1.3.6.1.5.5.7.3.3'
-            $codeSigningCertificates = @(
-              foreach ($candidate in $pfxCertificates) {
-                $ekuExtension = $candidate.Extensions |
-                  Where-Object {
-                    $_ -is [Security.Cryptography.X509Certificates.X509EnhancedKeyUsageExtension]
-                  } |
-                  Select-Object -First 1
-                $ekuOids = @(
-                  if ($null -ne $ekuExtension) {
-                    $ekuExtension.EnhancedKeyUsages | ForEach-Object Value
-                  }
-                )
-
-                Write-Host (
-                  "Loaded certificate: Subject='{0}', Thumbprint='{1}', HasPrivateKey={2}, EKUs='{3}'" -f
-                  $candidate.Subject,
-                  $candidate.Thumbprint,
-                  $candidate.HasPrivateKey,
-                  ($ekuOids -join ',')
-                )
-
-                if ($candidate.HasPrivateKey -and $ekuOids -contains $codeSigningOid) {
-                  $candidate
-                }
-              }
-            )
-            $certificate = $codeSigningCertificates | Select-Object -First 1
-
-            if ($null -eq $certificate) {
-              throw 'The PFX does not contain a certificate with a private key that is valid for code signing.'
-            }
-
-            $isSelfSigned = $certificate.Subject -eq $certificate.Issuer
-            if ($isSelfSigned) {
-              Write-Warning 'Using a self-signed certificate. Signature trust cannot be established on the runner.'
-            }
-
-            $now = Get-Date
-            if ($now -lt $certificate.NotBefore -or $now -gt $certificate.NotAfter) {
-              throw 'The code-signing certificate is not currently valid.'
-            }
-
-            $moduleFiles = @(
-              Get-Item -Path ./M365.Toolkit.psd1, ./M365.Toolkit.psm1
-              Get-ChildItem -Path ./src/Private, ./src/Public -Recurse -File |
-                Where-Object Extension -In '.ps1', '.psm1', '.psd1', '.ps1xml', '.cdxml'
-            )
-
-            foreach ($file in $moduleFiles) {
-              Write-Host "[$(Get-Date -Format o)] Signing $($file.FullName)"
-              $signingParameters = @{
-                FilePath      = $file.FullName
-                Certificate   = $certificate
-                HashAlgorithm = 'SHA256'
-                IncludeChain  = 'All'
-              }
-              if (-not $isSelfSigned) {
-                $signingParameters.TimestampServer = 'https://timestamp.digicert.com'
-              }
-
-              $signature = Set-AuthenticodeSignature @signingParameters
-              Write-Host "[$(Get-Date -Format o)] Signature status: $($signature.Status)"
-
-              $acceptableStatus = if ($isSelfSigned) {
-                $signature.Status -in @(
-                  [System.Management.Automation.SignatureStatus]::Valid,
-                  [System.Management.Automation.SignatureStatus]::UnknownError
-                )
-              }
-              else {
-                $signature.Status -eq [System.Management.Automation.SignatureStatus]::Valid
-              }
-
-              if (
-                -not $acceptableStatus -or
-                $null -eq $signature.SignerCertificate -or
-                $signature.SignerCertificate.Thumbprint -ne $certificate.Thumbprint
-              ) {
-                throw "Failed to sign '$($file.FullName)': $($signature.StatusMessage)"
-              }
-            }
-
-            $invalidSignatures = @(
-              foreach ($file in $moduleFiles) {
-                $signature = Get-AuthenticodeSignature -FilePath $file.FullName
-                $acceptableStatus = if ($isSelfSigned) {
-                  $signature.Status -in @(
-                    [System.Management.Automation.SignatureStatus]::Valid,
-                    [System.Management.Automation.SignatureStatus]::UnknownError
-                  )
-                }
-                else {
-                  $signature.Status -eq [System.Management.Automation.SignatureStatus]::Valid
-                }
-
-                if (
-                  -not $acceptableStatus -or
-                  $null -eq $signature.SignerCertificate -or
-                  $signature.SignerCertificate.Thumbprint -ne $certificate.Thumbprint
-                ) {
-                  $signature
-                }
-              }
-            )
-            if ($invalidSignatures.Count -gt 0) {
-              $invalidFiles = $invalidSignatures.Path -join ', '
-              throw "Signature validation failed for: $invalidFiles"
-            }
-
-            Write-Host "Signed and validated $($moduleFiles.Count) module files."
-          }
-          finally {
-            foreach ($pfxCertificate in $pfxCertificates) {
-              $pfxCertificate.Dispose()
-            }
-            if ($null -ne $pfxBytes) {
-              [Array]::Clear($pfxBytes, 0, $pfxBytes.Length)
-            }
-          }
+          ./build/Sign-Module.ps1 `
+            -ModulePath . `
+            -PfxBase64 $env:CODESIGNINGPFXBASE64 `
+            -PfxPassword $env:CODESIGNINGPFXPASSWORD
 
       - name: Create or update GitHub release
         if: github.event_name != 'pull_request'
