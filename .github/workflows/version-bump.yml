@@ -43,10 +43,10 @@ jobs:
         run: |
           $explicitVersion = '${{ inputs.explicit_version }}'.Trim()
           if ([string]::IsNullOrWhiteSpace($explicitVersion)) {
-            $newVersion = ./scripts/Update-ModuleVersion.ps1 -ManifestPath ./M365.Toolkit.psd1 -Bump '${{ inputs.bump_type }}'
+            $newVersion = ./build/Update-ModuleVersion.ps1 -ManifestPath ./M365.Toolkit.psd1 -Bump '${{ inputs.bump_type }}'
           }
           else {
-            $newVersion = ./scripts/Update-ModuleVersion.ps1 -ManifestPath ./M365.Toolkit.psd1 -Version $explicitVersion
+            $newVersion = ./build/Update-ModuleVersion.ps1 -ManifestPath ./M365.Toolkit.psd1 -Version $explicitVersion
           }
 
           "new_version=$newVersion" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append

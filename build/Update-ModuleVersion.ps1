@@ -1,26 +1,35 @@
 <#
 .SYNOPSIS
-    Bumps the ModuleVersion in a PowerShell module manifest (.psd1).
+    Updates the ModuleVersion in a PowerShell module manifest (.psd1).
 .DESCRIPTION
-    Reads the current ModuleVersion from the manifest, increments the requested
-    semver component (Major, Minor, or Patch), and writes the new version back
-    to the manifest in place. Prints the new version to the pipeline so it can
-    be captured by CI (e.g. GitHub Actions $GITHUB_OUTPUT).
+    Sets an explicit module version or increments the requested version component
+    and writes the new version to the manifest.
 .PARAMETER ManifestPath
     Path to the .psd1 manifest file to update.
 .PARAMETER Bump
-    Which semver component to increment: Major, Minor, or Patch. Defaults to Patch.
+    Version component to increment: Major, Minor, Patch, or Build.
+.PARAMETER Version
+    Explicit version to assign instead of incrementing the current version.
 .EXAMPLE
     .\Update-ModuleVersion.ps1 -ManifestPath .\M365.Toolkit.psd1 -Bump Patch
+.EXAMPLE
+    .\Update-ModuleVersion.ps1 -ManifestPath .\M365.Toolkit.psd1 -Version 1.2.0.0
 #>
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)]
     [string]$ManifestPath,
 
-    [Parameter()]
-    [ValidateSet('Major', 'Minor', 'Patch')]
-    [string]$Bump = 'Patch'
+    [Parameter(ParameterSetName = 'Bump')]
+    [ValidateSet('Major', 'Minor', 'Patch', 'Build')]
+    [string]$Bump = 'Build',
+
+    [Parameter(Mandatory, ParameterSetName = 'Version')]
+    [ValidateScript({
+        $parsedVersion = $null
+        [version]::TryParse($_, [ref]$parsedVersion)
+    })]
+    [string]$Version
 )
 
 if (-not (Test-Path -Path $ManifestPath)) {
@@ -30,12 +39,18 @@ if (-not (Test-Path -Path $ManifestPath)) {
 $manifest = Import-PowerShellDataFile -Path $ManifestPath
 [version]$currentVersion = $manifest.ModuleVersion
 
-$newVersion = switch ($Bump) {
-    'Major' { [version]::new($currentVersion.Major + 1, 0, 0) }
-    'Minor' { [version]::new($currentVersion.Major, $currentVersion.Minor + 1, 0) }
-    'Patch' {
-        $build = if ($currentVersion.Build -lt 0) { 0 } else { $currentVersion.Build }
-        [version]::new($currentVersion.Major, $currentVersion.Minor, $build + 1)
+$newVersion = if ($PSCmdlet.ParameterSetName -eq 'Version') {
+    [version]$Version
+}
+else {
+    $build = [Math]::Max(0, $currentVersion.Build)
+    $revision = [Math]::Max(0, $currentVersion.Revision)
+
+    switch ($Bump) {
+        'Major' { [version]::new($currentVersion.Major + 1, 0, 0, 0) }
+        'Minor' { [version]::new($currentVersion.Major, $currentVersion.Minor + 1, 0, 0) }
+        'Patch' { [version]::new($currentVersion.Major, $currentVersion.Minor, $build + 1, 0) }
+        'Build' { [version]::new($currentVersion.Major, $currentVersion.Minor, $build, $revision + 1) }
     }
 }
 
