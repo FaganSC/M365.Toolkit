@@ -30,6 +30,12 @@ jobs:
           repository: ${{ github.event.pull_request.head.repo.full_name }}
           ref: ${{ github.event.pull_request.head.ref }}
 
+      - name: Install module dependencies
+        shell: pwsh
+        run: |
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+          Install-Module -Name PnP.PowerShell -RequiredVersion 3.1.0 -Force -Scope CurrentUser -AllowClobber
+
       - name: Set stable pull request version
         id: version
         shell: pwsh
