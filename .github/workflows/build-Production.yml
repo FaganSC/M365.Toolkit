@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    tags:
+      - 'v*'
     paths-ignore:
       - docs/**
       - .github/workflows/pages.yml
@@ -25,24 +27,62 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Read module version from manifest
         id: version
         shell: pwsh
         run: |
           $manifest = Import-PowerShellDataFile -Path ./M365.Toolkit.psd1
-          $moduleVersion = [string]$manifest.ModuleVersion
-          if ([string]::IsNullOrWhiteSpace($moduleVersion)) {
+          $moduleVersionText = [string]$manifest.ModuleVersion
+          if ([string]::IsNullOrWhiteSpace($moduleVersionText)) {
             throw 'ModuleVersion was not found in M365.Toolkit.psd1.'
           }
-          if (-not [string]::IsNullOrWhiteSpace([string]$manifest.PrivateData.PSData.Prerelease)) {
+          if (
+            '${{ github.event_name }}' -ne 'pull_request' -and
+            -not [string]::IsNullOrWhiteSpace([string]$manifest.PrivateData.PSData.Prerelease)
+          ) {
             throw 'Production releases cannot contain a prerelease label.'
           }
 
+          $moduleVersion = [version]$moduleVersionText
           $releaseTag = "v$moduleVersion"
+          $publishRelease = '${{ github.event_name }}' -ne 'pull_request'
 
-          "module_version=$moduleVersion" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          if ('${{ github.ref_type }}' -eq 'tag') {
+            $tagName = '${{ github.ref_name }}'
+            if ($tagName -notmatch '^v\d+\.0\.0$') {
+              throw "Major release tags must use the format v<major>.0.0. Received: $tagName"
+            }
+            if ($tagName -ne $releaseTag) {
+              throw "Tag $tagName does not match manifest version $moduleVersion."
+            }
+          }
+          elseif ('${{ github.event_name }}' -ne 'pull_request') {
+            $releasedMajors = @(
+              git tag --list |
+                ForEach-Object {
+                  $tagVersion = $null
+                  if (
+                    $_ -match '^v?(\d+\.\d+\.\d+(?:\.\d+)?)$' -and
+                    [version]::TryParse($Matches[1], [ref]$tagVersion)
+                  ) {
+                    $tagVersion.Major
+                  }
+                } |
+                Sort-Object -Unique
+            )
+
+            if ($releasedMajors.Count -gt 0 -and $moduleVersion.Major -notin $releasedMajors) {
+              Write-Host "Skipping publish. Major version $($moduleVersion.Major) requires tag v$($moduleVersion.Major).0.0."
+              $publishRelease = $false
+            }
+          }
+
+          "module_version=$moduleVersionText" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           "release_tag=$releaseTag" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "publish_release=$($publishRelease.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
       - name: Install test dependencies
         shell: pwsh
@@ -63,7 +103,7 @@ jobs:
           Invoke-Pester -Path ./src/tests/M365.Toolkit.Tests.ps1 -CI
 
       - name: Sign module scripts
-        if: github.event_name != 'pull_request'
+        if: steps.version.outputs.publish_release == 'true'
         shell: pwsh
         env:
           CODESIGNINGPFXBASE64: ${{ secrets.CODESIGNINGPFXBASE64 }}
@@ -82,7 +122,7 @@ jobs:
             -PfxPassword $env:CODESIGNINGPFXPASSWORD
 
       - name: Create or update GitHub release
-        if: github.event_name != 'pull_request'
+        if: steps.version.outputs.publish_release == 'true'
         uses: ncipollo/release-action@v1
         with:
           tag: ${{ steps.version.outputs.release_tag }}
@@ -95,7 +135,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Strip authenticode signatures before publish
-        if: github.event_name != 'pull_request'
+        if: steps.version.outputs.publish_release == 'true'
         shell: pwsh
         run: |
           # PSGallery does not require signed files. Publishing files signed with a
@@ -114,7 +154,7 @@ jobs:
           }
 
       - name: Publish module to PowerShell Gallery
-        if: github.event_name != 'pull_request'
+        if: steps.version.outputs.publish_release == 'true'
         shell: pwsh
         env:
           PSGALLERY_API_KEY: ${{ secrets.PSGALLERYAPIKEY }}

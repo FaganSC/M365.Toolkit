@@ -6,7 +6,7 @@ on:
       - main
     types:
       - opened
-      - labeled
+      - reopened
 
 permissions:
   contents: write
@@ -33,40 +33,11 @@ jobs:
       - name: Set stable pull request version
         id: version
         shell: pwsh
-        env:
-          EVENT_ACTION: ${{ github.event.action }}
-          EVENT_LABEL: ${{ github.event.label.name }}
-          PR_LABELS_JSON: ${{ toJson(github.event.pull_request.labels.*.name) }}
         run: |
-          $versionPattern = '^v?\d+\.\d+\.\d+(?:\.\d+)?$'
-          $versionLabels = @(
-            $env:PR_LABELS_JSON |
-              ConvertFrom-Json |
-              Where-Object { $_ -match $versionPattern }
-          )
-
-          if ($versionLabels.Count -gt 1) {
-            throw "The pull request has multiple version labels: $($versionLabels -join ', ')"
-          }
-
-          if ($env:EVENT_ACTION -eq 'labeled' -and $env:EVENT_LABEL -notmatch $versionPattern) {
-            'changed=false' | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-            exit 0
-          }
-
-          if ($versionLabels.Count -eq 1) {
-            $explicitVersion = $versionLabels[0] -replace '^v', ''
-            $newVersion = ./build/Update-ModuleVersion.ps1 `
-              -ManifestPath ./M365.Toolkit.psd1 `
-              -Version $explicitVersion `
-              -ClearPrerelease
-          }
-          else {
-            $newVersion = ./build/Update-ModuleVersion.ps1 `
-              -ManifestPath ./M365.Toolkit.psd1 `
-              -Bump Patch `
-              -ClearPrerelease
-          }
+          $newVersion = ./build/Update-ModuleVersion.ps1 `
+            -ManifestPath ./M365.Toolkit.psd1 `
+            -Bump Minor `
+            -ClearPrerelease
 
           'changed=true' | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           "new_version=$newVersion" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append

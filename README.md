@@ -3,12 +3,13 @@ PowerShell Module for Microsoft 365 Toolkit
 
 ## Versioning Process For Publishing
 
-Use the GitHub workflow `.github/workflows/version-bump.yml` to update the module version in `M365.Toolkit.psd1`.
+M365.Toolkit follows the PnP.PowerShell numeric version pattern:
 
-1. Open Actions and run **Bump Module Version**.
-2. Select `bump_type` (`build`, `patch`, `minor`, or `major`) or provide `explicit_version`.
-3. The workflow updates `ModuleVersion`, commits the change, and pushes to the current branch.
-4. After merge/push to the target branch, the publish workflow uses the new manifest version for release tagging and PowerShell Gallery publish.
+- Develop prereleases increment the third component and use the `preview` label, for example `1.1.12-preview`.
+- A pull request to `main` increments the minor component, resets the third component to zero, and removes the prerelease label, for example `1.1.12-preview` becomes `1.2.0`.
+- A new major starts at `<major>.0.0` and is released only by pushing a matching tag, for example `v2.0.0`. The tag must point to a commit whose manifest version is `2.0.0`.
+
+The manual **Bump Module Version** workflow can update build, patch, or minor versions within the current major. It rejects explicit versions that change the major component.
 
 ## Production Code Signing
 
@@ -33,4 +34,4 @@ A self-signed certificate is signed without an external timestamp. The workflow 
 
 Each non-bot push to `develop` increments the three-part module build version, applies the `preview` prerelease label, and publishes the signed package to PowerShell Gallery. The workflow commits the new version to `develop` without triggering another build.
 
-When a pull request is opened against `main`, the workflow increments the patch version and removes the prerelease label. Add a label such as `v1.2.3.4` to set that exact version instead. Adding a non-version label does not change the manifest.
+When a pull request is opened or reopened against `main`, the workflow increments the minor version, resets the third component to zero, and removes the prerelease label. Version labels do not override this behavior.

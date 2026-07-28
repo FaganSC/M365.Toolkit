@@ -12,9 +12,8 @@ on:
           - build
           - patch
           - minor
-          - major
       explicit_version:
-        description: "Optional explicit version (example: 1.0.1.0)"
+        description: "Optional explicit version within the current major (example: 1.2.0)"
         required: false
         type: string
 
@@ -46,6 +45,13 @@ jobs:
             $newVersion = ./build/Update-ModuleVersion.ps1 -ManifestPath ./M365.Toolkit.psd1 -Bump '${{ inputs.bump_type }}'
           }
           else {
+            $manifest = Import-PowerShellDataFile -Path ./M365.Toolkit.psd1
+            $currentVersion = [version]$manifest.ModuleVersion
+            $requestedVersion = [version]$explicitVersion
+            if ($requestedVersion.Major -ne $currentVersion.Major) {
+              throw 'Major versions can only be introduced by a matching v<major>.0.0 git tag.'
+            }
+
             $newVersion = ./build/Update-ModuleVersion.ps1 -ManifestPath ./M365.Toolkit.psd1 -Version $explicitVersion
           }
 

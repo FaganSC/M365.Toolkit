@@ -18,7 +18,7 @@
 .EXAMPLE
     .\Update-ModuleVersion.ps1 -ManifestPath .\M365.Toolkit.psd1 -Bump Patch
 .EXAMPLE
-    .\Update-ModuleVersion.ps1 -ManifestPath .\M365.Toolkit.psd1 -Version 1.2.0.0
+    .\Update-ModuleVersion.ps1 -ManifestPath .\M365.Toolkit.psd1 -Version 1.2.0
 #>
 [CmdletBinding()]
 param(
@@ -59,9 +59,9 @@ else {
     $revision = [Math]::Max(0, $currentVersion.Revision)
 
     switch ($Bump) {
-        'Major' { [version]::new($currentVersion.Major + 1, 0, 0, 0) }
-        'Minor' { [version]::new($currentVersion.Major, $currentVersion.Minor + 1, 0, 0) }
-        'Patch' { [version]::new($currentVersion.Major, $currentVersion.Minor, $build + 1, 0) }
+        'Major' { [version]::new($currentVersion.Major + 1, 0, 0) }
+        'Minor' { [version]::new($currentVersion.Major, $currentVersion.Minor + 1, 0) }
+        'Patch' { [version]::new($currentVersion.Major, $currentVersion.Minor, $build + 1) }
         'Build' {
             if ($Prerelease) {
                 [version]::new($currentVersion.Major, $currentVersion.Minor, $build + 1)
