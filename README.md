@@ -1,4 +1,9 @@
 # PS.Microsoft365.Toolkit
+
+[![PowerShell Gallery Version](https://img.shields.io/powershellgallery/v/M365.Toolkit?label=PowerShell%20Gallery)](https://www.powershellgallery.com/packages/M365.Toolkit)
+[![GitHub Pages](https://github.com/FaganSC/M365.Toolkit/actions/workflows/pages.yml/badge.svg)](https://fagan.cloud/M365.Toolkit)
+[![GitHub Issues](https://img.shields.io/github/issues/FaganSC/M365.Toolkit)](https://github.com/FaganSC/M365.Toolkit/issues)
+
 PowerShell Module for Microsoft 365 Toolkit
 
 ## Versioning Process For Publishing

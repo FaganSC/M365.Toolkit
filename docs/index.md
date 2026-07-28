@@ -5,6 +5,10 @@ nav_order: 1
 
 # M365.Toolkit
 
+[![PowerShell Gallery Version](https://img.shields.io/powershellgallery/v/M365.Toolkit?label=PowerShell%20Gallery)](https://www.powershellgallery.com/packages/M365.Toolkit)
+[![GitHub Pages](https://github.com/FaganSC/M365.Toolkit/actions/workflows/pages.yml/badge.svg)](https://fagan.cloud/M365.Toolkit)
+[![GitHub Issues](https://img.shields.io/github/issues/FaganSC/M365.Toolkit)](https://github.com/FaganSC/M365.Toolkit/issues)
+
 M365.Toolkit is a PowerShell module for common Microsoft 365 administration tasks.
 
 ## Installation
