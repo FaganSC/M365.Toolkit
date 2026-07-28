@@ -94,6 +94,25 @@ jobs:
           prerelease: false
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Strip authenticode signatures before publish
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        run: |
+          # PSGallery does not require signed files. Publishing files signed with a
+          # self-signed certificate causes Install-Module to fail on end-user machines
+          # because the certificate is not in their trusted roots. Strip signature
+          # blocks here so the gallery copy is unsigned.
+          $extensions = '*.ps1', '*.psm1', '*.psd1', '*.ps1xml', '*.cdxml'
+          $files = Get-ChildItem -Path . -Recurse -Include $extensions
+          foreach ($file in $files) {
+              $content = Get-Content -Path $file.FullName -Raw
+              if ($content -match '# SIG # Begin signature block') {
+                  $stripped = $content -replace '(?s)\r?\n# SIG # Begin signature block.+', ''
+                  Set-Content -Path $file.FullName -Value $stripped -NoNewline -Encoding UTF8
+                  Write-Host "Stripped signature from $($file.FullName)"
+              }
+          }
+
       - name: Publish module to PowerShell Gallery
         if: github.event_name != 'pull_request'
         shell: pwsh
